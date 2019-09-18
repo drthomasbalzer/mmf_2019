@@ -88,7 +88,7 @@ def normal_histogram(mu, var, sz):
     sample = [nd.inverse_cdf(u) for u in getUniformSample(sz)]
     num_bins = 60
 
-    hp = pu.PlotUtilities("Histogram of Normal Sample with Mean={0}, Variance={1}".format(mean, var), 'Outcome',
+    hp = pu.PlotUtilities("Histogram of Normal Sample with Mean={0}, Variance={1}".format(mu, var), 'Outcome',
                           'Rel. Occurrence')
     hp.plotHistogram(sample, num_bins)
 
@@ -97,14 +97,14 @@ def lognormal_histogram(mu, var, sz):
 
     uniform_sample = getUniformSample(sz)
 
-    nd = dist.NormalDistribution(0, variance)
+    nd = dist.NormalDistribution(0, var)
     #######
     ### transform the uniform sample
     #######
     ###
     strike = 70.
     sample = [''] * 2
-    sample[0] = [mean * np.exp(nd.inverse_cdf(u) - 0.5 * var) for u in uniform_sample]
+    sample[0] = [mu * np.exp(nd.inverse_cdf(u) - 0.5 * var) for u in uniform_sample]
     sample[1] = [max(s - strike, 0.) for s in sample[0]]
     num_bins = 75
 
@@ -113,11 +113,53 @@ def lognormal_histogram(mu, var, sz):
     hp.plotHistogram([sample[0]], num_bins)
 
 
+def simulated_default_time(times, lambdas, sz):
+
+    ### we need to build an interpolator of the integrated hazard rate
+    y_values = [0.] * (len(times))
+    for k in range(1, len(times)):
+        y_values[k] = y_values[k-1] + (times[k] - times[k-1]) * lambdas[k]
+
+    sampled_default_time = [np.interp(-np.log(1 - u), y_values, times) for u in getUniformSample(sz)]
+    # sampled_default_time = [-np.log(1 - u) for u in getUniformSample(sz)]
+
+    num_bins = 50
+
+    plt.subplot(2, 1, 1)
+    n, bins, _hist = plt.hist(sampled_default_time, num_bins, normed=True, facecolor='green', alpha=0.75)
+
+    plt.xlabel('Outcome')
+    plt.ylabel('Rel. Occurrence')
+    plt.title("Simulated Default Time")
+
+    y = [np.exp(-np.interp(b, times, y_values)) * np.interp(b, times, lambdas) for b in bins]
+    plt.plot(bins, y, 'r*')
+    # # Tweak spacing to prevent clipping of ylabel
+    plt.subplots_adjust(left=0.15)
+
+    plt.subplot(2, 1, 2)
+
+    plt.xlabel('Time')
+    plt.ylabel('Default Probability')
+
+    pd = [1. - np.exp(-np.interp(b, times, y_values)) for b in bins]
+    plt.plot(bins, pd, 'r-')
+
+    plt.show()
+
+
+
 if __name__ == '__main__':
 
-    calc_type = 3
-
     size = 50000
+
+    times =  [0., 0.25, 1.0, 2.0, 4.0, 10., 100.]
+    hr =  [0.01, 0.01, 0.025, 0.05, 0.075, 0.1, 0.125]
+    # hr =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # hr =  [0.01, 0.025, 0.05, 0.075, 0.1, 0.125]
+    simulated_default_time(times, hr, size)
+
+    calc_type = 2
 
     if (calc_type == 0):  ### uniform sample
         uniform_histogram(size)
