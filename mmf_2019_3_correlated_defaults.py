@@ -1,0 +1,159 @@
+################
+## Author: Thomas Balzer
+## (c) 2019
+## Material for MMF Stochastic Analysis - Fall 2019
+################
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+import core_math_utilities as dist
+import plot_utilities as pu
+
+
+###########
+##### Demo of Correlated Default Times
+
+def getCorrelatedStandardNormals(size, rho):
+
+    sns = np.random.standard_normal(2 * size)
+
+    x = [sns[k] for k in range(size)]
+    y = [rho * sns[k] + np.sqrt(1 - rho * rho) * sns[k + size] for k in range(size)]
+
+    return x, y
+
+def correlated_defaults_scatter(lambda_1, lambda_2, rhos, size):
+
+    tau_2 = [0] * len(rhos)
+
+    sns = np.random.standard_normal(2 * size)
+
+    x = [sns[k] for k in range(size)]
+    tau_1 = [dist.exponential_inverse_cdf(lambda_1, dist.standard_normal_cdf(x1)) for x1 in x]
+
+    index = 0
+    for rho in rhos:
+        y = [rho * sns[k] + np.sqrt(1 - rho * rho) * sns[k + size] for k in range(size)]
+        tau_2[index] = [dist.exponential_inverse_cdf(lambda_2, dist.standard_normal_cdf(y1)) for y1 in y]
+        index = index + 1
+
+    ### scatter plot of the simulated defaults
+    colors = ['blue', 'green', 'orange', 'red', 'yellow']
+
+    mp = pu.PlotUtilities('Default Times with Correlations={0}'.format(rhos), 'x', 'y')
+
+    mp.scatterPlot(tau_1, tau_2, rhos, colors)
+
+
+def vasicek_large_portfolio_cdf(rho, p, x):
+
+    nd = dist.NormalDistribution(0., 1.)
+    y = (nd.inverse_cdf(x) * np.sqrt(1 - rho) - nd.inverse_cdf(p)) / np.sqrt(rho)
+    return nd.cdf(y)
+
+
+def plotVasicekDistribution(rhos, p, min_val, max_val, steps):
+
+    x_label = 'x'
+    y_label = 'CDF Value'
+    chart_title = 'Vasicek Large Portfolio Distribution'
+    step = (max_val - min_val) / steps
+    x_ax = [min_val + step * k for k in range(steps)]
+    y_ax = [[vasicek_large_portfolio_cdf(rho, p, x_val) for x_val in x_ax] for rho in rhos]
+
+    mp = pu.PlotUtilities(chart_title, x_label, y_label)
+    mp.multiPlot(x_ax, y_ax)
+
+class functorConditionalLossDist():
+
+    def __init__(self, rho, p, k, N):
+
+        self.p = p
+        self.rho = rho
+        self.k = k
+        self.N = N
+
+    def pdf(self, z):
+
+        return conditional_binomial_prob(self.k, self.N, self.rho, self.p, z)
+
+def conditional_default_prob(rho, p, z):
+
+    nd = dist.NormalDistribution(0., 1.)
+    y = (nd.inverse_cdf(p) - np.sqrt(rho) * z) / np.sqrt(1 - rho)
+    return nd.cdf(y)
+
+def conditional_binomial_prob(k, N, rho, p, z):
+
+    p_z = conditional_default_prob(rho, p, z)
+    return (dist.binomial_pdf(p_z, k, N))
+
+def portfolio_loss_histogram(rho, p, N, plotVsLHP = False):
+
+    x_label = 'x'
+    y_label = 'CDF Value'
+    chart_title = 'Portfolio Loss Distribution'
+    x_ax = [k for k in range(N+1)]
+    pdf_v = [0.] * (N+1)
+
+    for k in range(N+1):
+        pdf_func = functorConditionalLossDist(rho, p, k, N)
+        pdf_v[k] = gauss_hermite_integration_normalised(100, pdf_func.pdf)
+
+    cdf_v = [sum([pdf_v[i] for i in range(k)]) for k in range(N+1)]
+
+    tot_plot = 1
+    if (plotVsLHP):
+        tot_plot = 2
+
+    plt.subplot(tot_plot, 1, 1)
+
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(chart_title)
+
+    plt.plot(x_ax, cdf_v, 'r*')
+
+    if (plotVsLHP):
+        plt.subplot(tot_plot, 1, 2)
+
+        plt.xlabel('x')
+        plt.ylabel('Large Portfolio Approximation')
+
+        normed_ax = [float(x) / float(N) for x in x_ax]
+        lp_val = [vasicek_large_portfolio_cdf(rho, p, x) for x in normed_ax]
+
+        plt.plot(normed_ax, lp_val, 'b-')
+
+    plt.show()
+    plt.close()
+
+def gauss_hermite_integration_normalised(deg, func):
+
+    x, y = np.polynomial.hermite.hermgauss(deg)
+
+    scaling_factor = 1./np.sqrt(np.pi)
+    absc_factor = np.sqrt(2.)
+    val = sum([func(absc_factor * x_i) * y_i for x_i, y_i in zip(x,y)]) * scaling_factor
+    return val
+
+
+if __name__ == '__main__':
+
+
+    size = 500
+
+    rhos = [0.05, 0.1, 0.2, 0.5, 0.75]
+    # -- portfolio loss distribution for finite case
+    p = 0.05
+    portfolio_loss_histogram(rhos[2], p, 100, True)
+
+    # -- portfolio loss distribution for LHP case
+    plotVasicekDistribution(rhos, p, 0., 0.25, 500)
+
+    # -- demo of simple correlated defaults with different correlations
+    lambda_1 = 0.25
+    lambda_2 = 0.5
+    rhos = [0.95, 0.5, 0., -0.5, -0.95]
+    correlated_defaults_scatter(lambda_1, lambda_2, rhos, size)
