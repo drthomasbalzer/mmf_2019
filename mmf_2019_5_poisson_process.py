@@ -13,7 +13,7 @@ def default_process_trajectories(intensity, sample_size):
 
    uni_sample = np.random.uniform(0., 1., sample_size)
    sampled_default_time = [dist.exponential_inverse_cdf(intensity, u) for u in uni_sample]
-   max_time = 2. / intensity
+   max_time = 3. / intensity
    step_size = 0.01
    steps = int(max_time / step_size)
    x = [k * step_size for k in range(steps)]
@@ -36,7 +36,7 @@ def poisson_process(intensity, compensate):
    ### transform the uniform sample to exponentials and subsequently into jumps
    #######
    sample = [dist.exponential_inverse_cdf(intensity,u) for u in uni_sample]
-   jumps = [sum([sample[j] for j in range(k)]) for k in range(1,sz)]
+   jumps = [sum(sample[0:k]) for k in range(1,sz)]
 
    ####
    ## transform the jumps into trajectories of the counting process
@@ -68,5 +68,5 @@ if __name__ == '__main__':
 
    intensity = 0.25
    compensate = False
-   #default_process_trajectories(intensity, 3)
-   poisson_process(intensity, compensate)
+   default_process_trajectories(intensity, 5)
+   #poisson_process(intensity, compensate)
