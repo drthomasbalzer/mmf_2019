@@ -38,7 +38,7 @@ def binomial_lln(sample_size, p):
     y_ax[1] = [p for x in range(sample_size)]
 
     # y_values (0) - cumulative average of all the samples
-    y_ax[0] = [sum([sample[j] for j in range(k+1)]) / (k+1) for k in range(sample_size)]
+    y_ax[0] = [sum(sample[0:k+1]) / (k+1) for k in range(sample_size)]
 
     mp = pu.PlotUtilities("Cumulative Average", 'x', 'Average')
     mp.multiPlot(x_ax, y_ax)
@@ -101,10 +101,10 @@ def binomial_clt_hist(sample_size, repeats, p):
 
 if __name__ == '__main__':
 
-    sz = 10000
+    sz = 1000
     p = .75
-    # binomial_lln(sz, p)
+    binomial_lln(sz, p)
     repeats = 2000
-    binomial_clt_hist(sz, repeats, p)
+    #binomial_clt_hist(sz, repeats, p)
 
 
