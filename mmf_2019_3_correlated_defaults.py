@@ -138,6 +138,35 @@ def gauss_hermite_integration_normalised(deg, func):
     val = sum([func(absc_factor * x_i) * y_i for x_i, y_i in zip(x,y)]) * scaling_factor
     return val
 
+def example_bivariate_option_price_mc(mean, variance, pd, pd_vol, strike, df):
+    size = 15000
+    standard_normal_sample = np.random.standard_normal(2 * size)
+    ### we turn this into a random sample of dimension 2;
+
+    vol = np.sqrt(variance)
+    x = [mean * np.exp(vol * standard_normal_sample[k] - 0.5 * variance) for k in range(size)]
+    y = [0. for k in range(size)]
+
+    option_value = df * sum([max(x_0 - strike, 0) for x_0 in x]) / size
+    print (option_value)
+    min_rho = -0.99
+    max_rho = 0.99
+    step_size = 0.01
+    rho_steps = int((max_rho - min_rho) / step_size)
+    rhos = [min_rho + k * step_size for k in range(rho_steps)]
+    option_values = [option_value for rho in rhos]
+
+    mc_value = []
+    default_threshold = dist.normal_CDF_inverse(pd) * pd_vol
+    for rho in rhos:
+        for k in range(size):
+            z = pd_vol * (rho * standard_normal_sample[k] + np.sqrt(1 - rho * rho) * standard_normal_sample[k + size])
+            y[k] = (0. if z <= default_threshold else 1.)
+        mc_value.append(df * sum([y_0 * max(x_0 - strike, 0.) for y_0, x_0 in zip(y, x)]) / size)
+
+    mp = pu.PlotUtilities('Risk-Adjusted Option Value As Function of Correlation', 'Correlation', 'Option Value')
+    mp.multiPlot(rhos, [option_values, mc_value])
+
 
 if __name__ == '__main__':
 
@@ -147,13 +176,22 @@ if __name__ == '__main__':
     rhos = [0.05, 0.1, 0.2, 0.5, 0.75]
     # -- portfolio loss distribution for finite case
     p = 0.05
-    portfolio_loss_histogram(rhos[2], p, 100, True)
+    # portfolio_loss_histogram(rhos[2], p, 100, True)
+    #
+    # # -- portfolio loss distribution for LHP case
+    # plotVasicekDistribution(rhos, p, 0., 0.25, 500)
+    #
+    # # -- demo of simple correlated defaults with different correlations
+    # lambda_1 = 0.25
+    # lambda_2 = 0.5
+    # rhos = [0.95, 0.5, 0., -0.5, -0.95]
+    # correlated_defaults_scatter(lambda_1, lambda_2, rhos, size)
 
-    # -- portfolio loss distribution for LHP case
-    plotVasicekDistribution(rhos, p, 0., 0.25, 500)
 
-    # -- demo of simple correlated defaults with different correlations
-    lambda_1 = 0.25
-    lambda_2 = 0.5
-    rhos = [0.95, 0.5, 0., -0.5, -0.95]
-    correlated_defaults_scatter(lambda_1, lambda_2, rhos, size)
+    mean = 100
+    variance = 0.2 * 0.2
+    pd = 0.10
+    pd_vol = 2.0
+    strike = 105
+    df = 1.0
+    example_bivariate_option_price_mc(mean, variance, pd, pd_vol, strike, df)

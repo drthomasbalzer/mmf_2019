@@ -7,8 +7,26 @@
 import numpy as np
 
 import core_math_utilities as dist
+import plot_utilities as pu
 
 import matplotlib.pyplot as plt
+
+def plot_bachelier_option_price(start, vol):
+
+    lower_bound = start - 10.
+    upper_bound = start + 10.
+    step = 0.01
+    n_steps = int((upper_bound - lower_bound) / step)
+
+    nd = dist.NormalDistribution(0., 1.)
+
+    knock_out = 5
+
+    x_ax = [lower_bound + k * step for k in range(n_steps)]
+    y_ax = [ vol * nd.pdf( (max(x,knock_out) - start) / vol ) - (x - start) * nd.cdf( (start - max(x, knock_out)) / vol ) for x in x_ax]  # poisson distribution
+
+    mp = pu.PlotUtilities("Bachelier Option Value as Function of Strike", "Option Strike", "Option Value")
+    mp.multiPlot(x_ax, [y_ax], '-')
 
 
 def malliavin_greeks(start, vol, strike, digitalPayout = False):
@@ -118,4 +136,6 @@ if __name__ == '__main__':
     start = 5.
     strike = 6.5
     vol = 1.0
-    malliavin_greeks(start, vol, strike, False)
+    plot_bachelier_option_price(start, vol)
+    #malliavin_greeks(start, vol, strike, False)
+
