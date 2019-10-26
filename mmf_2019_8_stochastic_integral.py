@@ -42,9 +42,14 @@ def si_integrand_only(_steps, _paths, scaling):
     delta_t_sq = 1. / np.sqrt(scaling)
 
     for m in range(_paths):
-        sample = np.random.normal(0., 1., n)
-        bm_path = [sum(sample[0:k]) * delta_t_sq for k in range(0, n+1)]
-        # print (len(bm_path))
+
+        ### create normal increments scaled to the right time step
+        normal_sample = np.random.normal(0., 1., n)
+        increments_bm = [s * delta_t_sq for s in normal_sample]
+
+        ### create Brownian Motion paths
+        bm_path = [0.] * (n+1)
+        bm_path[1:n+1] = np.cumsum(increments_bm)
         output_lhs_non_si[m] = sum(bm_path[0:n]) * delta_t
         output_rhs_non_si[m] = sum(bm_path[1:n+1]) * delta_t
 
@@ -67,7 +72,10 @@ def stochastic_integral_hist(_steps, _paths, scaling):
     for m in range(_paths):
         normal_sample = np.random.normal(0., 1., n)
         increments_bm = [s * delta_t_sq for s in normal_sample]
-        bm_path = [sum(increments_bm[0:k]) for k in range(0, n+1)]
+
+        ### create Brownian Motion paths
+        bm_path = [0.] * (n+1)
+        bm_path[1:n+1] = np.cumsum(increments_bm)
 
         output_lhs[m] = sum([f * g for f, g in zip(bm_path[0:n], increments_bm)])
         output_rhs[m] = sum([f * g for f, g in zip(bm_path[1:n+1], increments_bm)])
@@ -86,8 +94,8 @@ if __name__ == '__main__':
     _paths = 5000
     _steps = 1
     scaling = 500
-    i = general_integration(f_exp, f_id, _steps, scaling)
-    print (i)
+    # i = general_integration(f_exp, f_id, _steps, scaling)
+    # print (i)
 
-    # stochastic_integral_hist(_steps, _paths, scaling)
+    stochastic_integral_hist(_steps, _paths, scaling)
 #    stochastic_integral_integrand_only(_steps, _paths, scaling)
