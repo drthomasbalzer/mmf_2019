@@ -127,6 +127,7 @@ def plot_3d(functor2D):
 
 
 if __name__ == '__main__':
+
     f_epe = FunctorEPE()
     f_tp = FunctorTransitionDensity(0.)
     f_2m = Functor2ndMoment()
